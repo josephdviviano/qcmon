@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+
+def check_n_trs(fpath):
+    """
+    Returns the number of TRs for an input file. If the file is 3D, we also
+    return 1.
+    """
+    data = nib.load(fpath)
+
+    try:
+        ntrs = data.shape[3]
+    except:
+        ntrs = 1
+
+    return ntrs
+
+if __name__ == '__main__':
+    main()

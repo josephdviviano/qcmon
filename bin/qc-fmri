@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+"""
+Calculates and writes:
+     + Mean and SD of normalized spectra across brain.
+     + Framewise displacement (mm/TR) of head motion.
+     + Mean correlation from a random 10% of the in-brain voxels.
+"""
+
+def main(func, mask, f, filename, pic):
+
+    # sfnr
+    tmpdir = tempfile.mkdtemp(prefix='qc-')
+    run('3dvolreg -prefix {t}/mcorr.nii.gz -twopass -twoblur 3 -Fourier -1Dfile {t}/motion.1D {f}'.format(t=tmpdir, f=fpath))
+    run('3dTstat -prefix {t}/mean.nii.gz {t}/mcorr.nii.gz'.format(t=tmpdir))
+    run('3dAutomask -prefix {t}/mask.nii.gz -clfrac 0.5 -peels 3 {t}/mean.nii.gz'.format(t=tmpdir))
+    run('3dTstat -prefix {t}/std.nii.gz  -stdev {t}/mcorr.nii.gz'.format(t=tmpdir))
+    run("""3dcalc -prefix {t}/sfnr.nii.gz -a {t}/mean.nii.gz -b {t}/std.nii.gz -expr 'a/b'""".format(t=tmpdir))
+
+    # spectra
+    func = load_masked_data(func, mask)
+    spec = sig.detrend(func, type='linear')
+    spec = sig.periodogram(spec, fs=0.5, return_onesided=True, scaling='density')
+    freq = spec[0]
+    spec = spec[1]
+    sd = np.nanstd(spec, axis=0)
+    mean = np.nanmean(spec, axis=0)
+
+    # framewise displacement
+    fd_thresh = 0.5
+    f = np.genfromtxt('{t}/motion.1D'.format(t=tmpdir))
+    f[:,0] = np.radians(f[:,0]) * 50 # 50 = head radius, need not be constant.
+    f[:,1] = np.radians(f[:,1]) * 50 # 50 = head radius, need not be constant.
+    f[:,2] = np.radians(f[:,2]) * 50 # 50 = head radius, need not be constant.
+    f = np.abs(np.diff(f, n=1, axis=0))
+    f = np.sum(f, axis=1)
+    t = np.arange(len(f))
+
+    # whole brain correlation
+    idx = np.random.choice(func.shape[0], func.shape[0]/10, replace=False)
+    corr = func[idx, :]
+    corr = sp.corrcoef(corr, rowvar=1)
+    mean = np.mean(corr, axis=None)
+    std = np.std(corr, axis=None)
+
+if __name__ == '__main__':
+    main
+

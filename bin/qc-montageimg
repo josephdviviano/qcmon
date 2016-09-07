@@ -1,0 +1,181 @@
+#!/usr/bin/env python
+
+def bounding_box(filename):
+    """
+    Finds a box that only includes all nonzero voxels in a 3D image. Output box
+    is represented as 3 x 2 numpy array with rows denoting x, y, z, and columns
+    denoting stand and end slices.
+
+    Usage:
+        box = bounding_box(filename)
+    """
+
+    # find 3D bounding box
+    box = np.zeros((3,2))  # init bounding box
+    flag = 0  # ascending
+
+    for i, dim in enumerate(filename.shape): # loop through (x, y, z)
+
+        # ascending search
+        while flag == 0:
+            for dim_test in np.arange(dim):
+
+                # get sum of all values in each slice
+                if i == 0:   test = np.sum(filename[dim_test, :, :])
+                elif i == 1: test = np.sum(filename[:, dim_test, :])
+                elif i == 2: test = np.sum(filename[:, :, dim_test])
+
+                # if slice is nonzero, set starting bound, switch to descending
+                if test >= 1:
+                    box[i, 0] = dim_test
+                    flag = 1
+                    break
+
+        # descending search
+        while flag == 1:
+            for dim_test in np.arange(dim):
+
+                dim_test = dim-dim_test - 1  # we have to reverse things
+
+                # get sum of all values in each slice
+                if i == 0:   test = np.sum(filename[dim_test, :, :])
+                elif i == 1: test = np.sum(filename[:, dim_test, :])
+                elif i == 2: test = np.sum(filename[:, :, dim_test])
+
+                # if slice is nonzero, set ending bound, switch to ascending
+                if test >= 1:
+                    box[i, 1] = dim_test
+                    flag = 0
+                    break
+    return box
+
+def factors(n):
+    """
+    Returns all factors of n.
+    """
+    return set(reduce(list.__add__,
+                ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
+
+def square_factors(fac, num):
+    """
+    Finds the two most square factors of a number from a list of factors.
+    Factors returned with the smallest first.
+    """
+    candidates = []
+    for x in fac:
+        for y in fac:
+            if x*y == num:
+                candidates.append(abs(x-y))
+    most_square = np.min(candidates)
+    for x in fac:
+        for y in fac:
+            if x*y == num:
+                if x-y == most_square:
+                    factor = [x, y]
+    if factor[0] > factor[1]:
+        factor = factor[::-1]
+
+    return factor
+
+def main(image, name, filename, pic, cmaptype='grey', mode='3d', minval=None, maxval=None, box=None):
+    """
+    Creates a montage of images displaying a image set on top of a grayscale
+    image.
+
+    Generally, this will be used to plot an image (of type 'name') that was
+    generated from the original file 'filename'. So if we had an SNR map
+    'SNR.nii.gz' from 'fMRI.nii.gz', we would submit everything to montage
+    as so:
+
+        montage('SNR.nii.gz', 'SNR', 'EPI.nii.gz', 'EPI_SNR.png')
+
+    Usage:
+        montage(image, name, filename, pic)
+
+        image    -- submitted image file name
+        name     -- name of the printout (e.g, SNR map, t-stats, etc.)
+        cmaptype -- 'redblue', 'hot', or 'gray'.
+        minval   -- colormap minimum value as a % (None == 'auto')
+        maxval   -- colormap maximum value as a % (None == 'auto')
+        mode     -- '3d' (prints through space) or '4d' (prints through time)
+        filename -- qc image file name
+        picpath  -- Path to save the figure .png to
+        box      -- a (3,2) tuple that describes the start and end voxel
+                    for x, y, and z, respectively. If None, we find it ourselves.
+    """
+    image = str(image) # input checks
+    opath = os.path.dirname(image) # grab the image folder
+    output = str(image)
+    image = nib.load(image).get_data() # load in the daterbytes
+
+    if mode == '3d':
+        if len(image.shape) > 3: # if image is 4D, only keep the first time-point
+            image = image[:, :, :, 0]
+
+        image = np.transpose(image, (2,0,1))
+        image = np.rot90(image, 2)
+        steps = np.round(np.linspace(0,np.shape(image)[0]-2, 36)) # coronal plane
+        factor = 6
+
+        # use bounding box (submitted or found) to crop extra-brain regions
+        if box == None:
+            box = bounding_box(image) # get the image bounds
+        elif box.shape != (3,2): # if we did, ensure it is the right shape
+            logger.error('ERROR: Bounding box should have shape = (3,2).')
+            raise ValueError
+        image = image[box[0,0]:box[0,1], box[1,0]:box[1,1], box[2,0]:box[2,1]]
+
+    if mode == '4d':
+        image = reorient_4d_image(image)
+        midslice = np.floor((image.shape[2]-1)/2) # print a single plane across all slices
+        factor = np.ceil(np.sqrt(image.shape[3])) # print all timepoints
+        factor = factor.astype(int)
+
+    # colormapping -- set value
+    if cmaptype == 'redblue': cmap = plt.cm.RdBu_r
+    elif cmaptype == 'hot': cmap = plt.cm.OrRd
+    elif cmaptype == 'gray': cmap = plt.cm.gray
+    else:
+        logger.debug('No valid colormap supplied, default = greyscale.')
+        cmap = plt.cm.gray
+
+    # colormapping -- set range
+    if minval == None:
+        minval = np.min(image)
+    else:
+        minval = np.min(image) + ((np.max(image) - np.min(image)) * minval)
+
+    if maxval == None:
+        maxval = np.max(image)
+    else:
+        maxval = np.max(image) * maxval
+
+    cmap.set_bad('g', 0)  # value for transparent pixels in the overlay
+
+    fig, axes = plt.subplots(nrows=factor, ncols=factor, facecolor='white')
+    for i, ax in enumerate(axes.flat):
+
+        if mode == '3d':
+            im = ax.imshow(image[steps[i], :, :], cmap=cmap, interpolation='nearest', vmin=minval, vmax=maxval)
+            ax.set_frame_on(False)
+            ax.axes.get_xaxis().set_visible(False)
+            ax.axes.get_yaxis().set_visible(False)
+
+        elif mode == '4d' and i < image.shape[3]:
+            im = ax.imshow(image[:, :, midslice, i], cmap=cmap, interpolation='nearest')
+            ax.set_frame_on(False)
+            ax.axes.get_xaxis().set_visible(False)
+            ax.axes.get_yaxis().set_visible(False)
+
+        elif mode == '4d' and i >= image.shape[3]:
+            ax.set_axis_off() # removes extra axes from plot
+
+    plt.subplots_adjust(left=0, right=0.85, top=0.9, bottom=0)
+
+    cbar_ax = fig.add_axes([0.88, 0.10, 0.05, 0.7])
+    cb = fig.colorbar(im, cax=cbar_ax)
+    fig.suptitle(filename + '\n' + name, size=10)
+
+    fig.savefig(pic, format='png', dpi=FIGDPI)
+    plt.close()
+
