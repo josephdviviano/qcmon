@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """
-Checks that DTI bvec and bvals match the gold standards. 
+Checks that DTI bvec and bvals match the gold standards.
 
 Usage:
     dm-check-bvecs.py [options] <standards/> <logdir/> <examsdir/>
 
-Arguments: 
+Arguments:
     <standards/>            Folder with subfolders named by tag. Each subfolder
                             has a sample gold standard dicom file for that tag.
 
@@ -17,7 +17,7 @@ Arguments:
                             exam directory should have export nifti series,
                             some of which have corresponding .bvec/.bval files
 
-Options: 
+Options:
     --filter TEXT           A string to filter exams by (ex. site name). All
                             exam folders found in <examsdir/> must have this
                             text in their name.
@@ -34,18 +34,22 @@ import pprint
 import re
 import sys
 
+import matplotlib
+matplotlib.use('Agg')   # Force matplotlib to not use any Xwindows backend
+import matplotlib.pyplot as plt
+
 def diff_files(examdir, standardsdir):
-     
+
     diffs = {}  # map from file to diff against gold standard
     for ext in ['bvec','bval']:
         for test in glob.glob(examdir+'/*.'+ext):
             tag = dm.scanid.parse_filename(os.path.basename(test))[1]
             gold = glob.glob("{}/{}/*.{}".format(standardsdir, tag, ext))
-            
+
             if len(gold) > 1:
                 log.error('More than one gold standard .{} file for tag {}'.format(ext, tag))
                 continue
-            
+
             if len(gold) == 0:
                 log.error('No gold standard .{} file for tag {}'.format(ext, tag))
                 continue
@@ -53,10 +57,10 @@ def diff_files(examdir, standardsdir):
             diff = difflib.ndiff(open(test).readlines(), open(gold[0]).readlines())
             changes = [l for l in diff if l.startswith('+ ') or l.startswith('- ')]
 
-            if changes: 
+            if changes:
                 diffs[test] = ''.join(changes)
 
-    return diffs 
+    return diffs
 
 def main():
     arguments = docopt(__doc__)
@@ -83,7 +87,7 @@ def main():
         sys.exit(1)
 
     globexpr = '*'
-    if filtertext: 
+    if filtertext:
         globexpr = '*{}*'.format(filtertext)
 
     for examdir in glob.glob('{}/{}/'.format(examsdir,globexpr)):
@@ -92,7 +96,7 @@ def main():
 
         diffs = diff_files(examdir, standardsdir)
 
-        if not diffs: 
+        if not diffs:
             continue
 
         logfile = os.path.join(logsdir, "dm-check-bvecs-{}.log".format(
