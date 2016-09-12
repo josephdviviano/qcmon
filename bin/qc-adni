@@ -1,4 +1,40 @@
 #!/usr/bin/env python
+"""
+Usage:
+    qc-adni <nifti> <output>
+
+    nifti -- full path to input T1-weighted scan of ADNI phantom.
+    output -- output .csv filename.
+
+This computes the absoloute and relative T1 intensities of the 5 major orbs
+in the center of the ADNI phantom to get a measure of contrast stability over
+time. This is important as many anatomical measures (i.e., cortical thickness)
+depend on contrast being reliable.
+
+Finds the 5 ROIs of interest using the random walker algorithm [1]. Uses the
+image mean as the lower threshold, and 2x the mean as an upper threshold.
+
+Further, we find the 5 largest connected components. The mean of these
+masks are used as our ADNI samples and passed along for plotting.
+
+This also calculates the relevant T1 ratios: s2/s1, s3/s1, s4/s1, s5/s1.
+ http://scikit-image.org/docs/dev/auto_examples
+
+[1] Random walks for image segmentation, Leo Grady, IEEE Trans.
+    Pattern Anal. Mach. Intell. 2006 Nov; 28(11):1768-83
+"""
+import os, sys
+import tempfile
+from copy import copy
+import numpy as np
+import scipy as sp
+import nibabel as nib
+import matplotlib.pyplot as plt
+
+from skimage.measure import label
+from skimage.segmentation import random_walker
+from skimage.draw import circle
+from skimage.measure import regionprops
 
 def remove_region(data, i):
     """
@@ -46,8 +82,6 @@ def sample_centroids(data, radius=5):
     Takes in a label file and places equally-sized disks of radius r at each
     ROIs centroid. This returns an ROI matrix with equally sized ROIs.
     """
-    from skimage.draw import circle
-    from skimage.measure import regionprops
 
     props = regionprops(data, intensity_image=None, cache=True)
     for prop in props:
@@ -82,29 +116,12 @@ def print_adni_qc(outputdir, data, title):
     plt.close()
 
 def main(nifti, output):
-    """
-    Find the 5 ROIs of interest using the random walker algorithm [1]. Uses the
-    image mean as the lower threshold, and 2x the mean as an upper threshold.
-
-    Further, we find the 5 largest connected components. The mean of these
-    masks are used as our ADNI samples and passed along for plotting.
-
-    This also calculates the relevant T1 ratios: s2/s1, s3/s1, s4/s1, s5/s1.
-
-    http://scikit-image.org/docs/dev/auto_examples
-
-    [1] Random walks for image segmentation, Leo Grady, IEEE Trans.
-        Pattern Anal. Mach. Intell. 2006 Nov; 28(11):1768-83
-    """
-    from copy import copy
-    from skimage.measure import label
-    from skimage.segmentation import random_walker
 
     title = copy(nifti)
     outputdir = os.path.dirname(output)
 
     # load template from assets folder
-    template = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets', 'adni-template.nii.gz'))
+    template = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets', 'adni-template.nii.gz')
     if not os.path.isfile(template):
         sys.exit('ERROR: {} not found'.format(template))
 
@@ -189,5 +206,7 @@ def main(nifti, output):
     np.savetxt(output, adni)
 
 if __name__ == '__main__':
-    main()
-
+    if len(sys.argv) == 3:
+        main(sys.argv[1], sys.argv[2])
+    else:
+        print(__doc__)
