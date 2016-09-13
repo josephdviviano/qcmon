@@ -243,3 +243,64 @@ def scale_timeseries(ts):
 
     return ts
 
+def load_masked_data(func, mask):
+    """
+    Accepts 'functional.nii.gz' and 'mask.nii.gz', and returns a voxels x
+    timepoints matrix of the functional data in non-zero mask locations.
+    """
+    func = nib.load(func).get_data()
+    mask = nib.load(mask).get_data()
+
+    mask = mask.reshape(mask.shape[0]*mask.shape[1]*mask.shape[2])
+    idx = np.where(mask > 0)[0]
+
+    if len(func.shape) == 4:
+        func = func.reshape(func.shape[0]*func.shape[1]*func.shape[2], func.shape[3])
+    elif len(func.shape) == 3:
+        func = func.reshape(func.shape[0]*func.shape[1]*func.shape[2], 1)
+
+    # return in-brain voxels only
+    func = func[idx, :]
+
+    return func
+
+def get_mask_dims(mask):
+    """
+    mask should be the path to a 3D NIFTI file.
+
+    Finds all nonzero voxels in this file. Returns the full dimensions of the
+    mask, the affine transform and header of the mask, and the idx of the
+    nonzero voxels in the flattened mask. This information can be used to write
+    stats out to an equally-shaped nifti volume from data loaded using
+    load_masked_data().
+    """
+
+    nifti = nib.load(mask)
+    affine = nifti.get_affine()
+    header = nifti.get_header()
+    dims = list(nifti.shape)
+
+    if len(dims) != 3:
+        raise Exception("ERROR: Mask should be 3D")
+
+    # get flattened indicies
+    nifti = nifti.get_data()
+    nifti = nifti.reshape(dims[0]*dims[1]*dims[2], 1)
+    idx = np.where(nifti > 0)[0]
+
+    return idx, affine, header, dims
+
+def run(cmd):
+    """
+    Runs commands in shell, and complains if there is a problem.
+    """
+    import subprocess as proc
+
+    p = proc.Popen(cmd, shell=True, stdout=proc.PIPE, stderr=proc.PIPE)
+    out, err = p.communicate()
+
+    if p.returncode != 0:
+        print("ERROR: {} while executing: {}".format(p.returncode, cmd))
+        print("  out: {}".format(out.replace('\n','\n>\t')))
+        print("  err: {}".format(err.replace('\n','\n>\t')))
+
