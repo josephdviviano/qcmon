@@ -1,22 +1,24 @@
 #!/usr/bin/env python
 
 """
-Plots, for each axial slice, the mean instensity over all TRs.
-Strong deviations are an indication of the presence of spike
-noise.
-
-If bvec is supplied, we remove all time points that are 0 in the bvec
-vector.
-
 Usage:
-    find_epi_spikes(image, filename, picpath)
-    image    -- submitted image file name
-    filename -- qc image file name
-    pic      -- path to save the .png figure to
-    ftype    -- 'fmri' or 'dti'
-    bvec     -- numpy array of bvecs (for finding direction = 0)
+    qc-spikecount <nifti> <output> <bvec>
 
-    """
+    nifti -- input 4D nifti image (fMRI or DTI)
+    output -- output .csv file
+    bval -- bval file (for DTI)
+
+Calculates the mean and standard deviation of each axial slice over all TRs.
+Counts the number of outliers across all slices, and prints this number to
+the text file 'output'.
+
+If bval is supplied (for DTI), we remove all time points that are B0.
+"""
+
+import os, sys
+from copy import copy
+import numpy as np
+import nibabel as nib
 
 def reorient_4d_image(image):
     """
@@ -42,90 +44,47 @@ def reorient_4d_image(image):
 
     return image
 
-def main(image, filename, pic, ftype, bvec=None):
+def main(nifti, output, bvec=None):
 
-    image = str(image)             # input checks
-    opath = os.path.dirname(image) # grab the image folder
+    nifti = reorient_4d_image(nib.load(nifti).get_data())
 
-    # load in the daterbytes
-    output = str(image)
-    image = nib.load(image).get_data()
-    image = reorient_4d_image(image)
+    if bvec:
+        bvec = np.genfromtxt(bvec)
+        idx = np.where(bvec != 0)[0]
+        nifti = nifti[:, :, :, idx]
 
-    x = image.shape[1]
-    y = image.shape[2]
-    z = image.shape[0]
-    t = image.shape[3]
-
-    # initialize the spikecount
+    x = nifti.shape[1]
+    y = nifti.shape[2]
+    z = nifti.shape[0]
+    t = nifti.shape[3]
     spikecount = 0
 
-    # find the most square set of factors for n_trs
-    factor = np.ceil(np.sqrt(z))
-    factor = factor.astype(int)
+    for i in np.arange(z):
+        for j in np.arange(t):
 
-    fig, axes = plt.subplots(nrows=factor, ncols=factor, facecolor='white')
+            sample = nifti[i, :, :, j]
+            mean = np.mean(sample)
+            sd = np.std(sample)
 
-    # sets the bounds of the image
-    c1 = np.round(x*0.25)
-    c2 = np.round(x*0.75)
-
-    # for each axial slice
-    for i, ax in enumerate(axes.flat):
-        if i < z:
-
-            v_mean = np.array([])
-            v_sd = np.array([])
-
-            # find the mean, STD, of each dir and concatenate w. vector
-            for j in np.arange(t):
-
-                # gives us a subset of the image
-                sample = image[i, c1:c2, c1:c2, j]
-                mean = np.mean(sample)
-                sd = np.std(sample)
-
-                if j == 0:
-                    v_mean = copy(mean)
-                    v_sd = copy(sd)
-                else:
-                    v_mean = np.hstack((v_mean, mean))
-                    v_sd = np.hstack((v_sd, sd))
-
-            # crop out b0 images
-            if bvec is None:
-                v_t = np.arange(t)
+            if j == 0:
+                v_mean = copy(mean)
+                v_sd = copy(sd)
             else:
-                idx = np.where(bvec != 0)[0]
-                v_mean = v_mean[idx]
-                v_sd = v_sd[idx]
-                v_t = np.arange(len(idx))
+                v_mean = np.hstack((v_mean, mean))
+                v_sd = np.hstack((v_sd, sd))
 
-            # keep track of spikes
-            v_spikes = np.where(v_mean > np.mean(v_mean)+np.mean(v_sd))[0]
-            spikecount = spikecount + len(v_spikes)
+            above = len(np.where(v_mean > np.mean(v_mean)+np.mean(v_sd))[0])
+            below = len(np.where(v_mean < np.mean(v_mean)-np.mean(v_sd))[0])
+            spikecount = spikecount + above + below
 
-            ax.plot(v_mean, color='black')
-            ax.fill_between(v_t, v_mean-v_sd, v_mean+v_sd, alpha=0.5, color='black')
-            ax.set_frame_on(False)
-            ax.axes.get_xaxis().set_visible(False)
-            ax.axes.get_yaxis().set_visible(False)
-        else:
-            ax.set_axis_off()
-
-    if cur:
-        subj = filename.split('_')[0:4]
-        subj = '_'.join(subj)
-
-        insert_value(cur, ftype, subj, 'spikecount', spikecount)
-
-    plt.subplots_adjust(left=0, right=1, top=0.9, bottom=0)
-    plt.suptitle('{}\nDTI Slice/TR Wise Abnormalities'.format(filename), size=10)
-
-
-    fig.savefig(pic, format='png', dpi=FIGDPI)
-    plt.close()
+    with open(output, 'wb') as f:
+        f.write(str(spikecount) + '\n')
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 3:
+        main(sys.argv[1], sys.argv[2])
+    elif len(sys.argv) == 4:
+        main(sys.argv[1], sys.argv[2], sys.argv[3])
+    else:
+        print(__doc__)
 
