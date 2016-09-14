@@ -1,36 +1,27 @@
-%   To perform a quantitation of snr, sfnr, stability and drift
-%   includes weisskoff plot  MRM 36:643 (1996)
+%   A modified version of the fBIRN fMRI QC pipeline.
 %
-%   rev 0   3/3/00      original from noiseave and imgroi
+%   Performs a quantitation of snr, sfnr, stability and drift
+%   including a weisskoff plot  MRM 36:643 (1996)
+%
+%   rev 0   3/03/00     original from noiseave and imgroi
 %   rev 1   3/29/02     fix a few header things
-%   rev 2   9/4/02      add weissnoise plot
-%   rev 3   1/28/03     add phase drift plot
-%               .freq image is scaled 10x
-%   rev 4   4/1/03      for fbirn
-
+%   rev 2   9/04/02     add weissnoise plot
+%   rev 3   1/28/03     add phase drift plot, freq image is scaled 10x.
+%   rev 4   4/01/03     for fbirn
+%
 %   acq: 35 slice 64x64 TR 3.0 TE 30 (3T) 40 (1.5T) 200 frames
 %   grecons -s 18 -e 18 Pxxxxx
+%
+%   adapted to SPINS by Sofia Chavez, Sep.2014
+%   modified to fit SPINS pipeline by Joseph Viviano, Jan.2015
 
-%% adapted to SPINS by Sofia Chavez, Sep.2014
-%% modified to fit SPINS pipeline by Joseph Viviano, Jan.2015
-
-function compute_fbirn(basepath, subj, data)
-
-    % datapath = '/projects/spins/data/';
-    % addpath('/projects/spins/code/nifti-tools')
-    % subj = 'SPN01_ZHH_PHA_FBN0005';
-    % data = 'SPN01_ZHH_PHA_FBN0005_03_Resting_State_212_1.nii.gz';
-
-    qcpath = strcat(basepath, '/qc/phantom/fmri/');
+function analyze_fmri_phantom(input, output_prefix)
 
     % load in the data as I4d LOL (untouched prevents scaling)
-    I4d = load_untouch_nii([basepath '/data/nii/' subj '/' data]);
+    I4d = load_untouch_nii(input);
     I4d = I4d.img;
 
-    % update user about subject
-    disp(['fBIRN fMRI for ' subj])
-
-    outflname=strcat(qcpath, subj, '.csv');
+    outflname=strcat(output_prefix, '_stats.csv');
     fid=fopen(outflname,'w');
     count=fprintf(fid, '%s,%s,%s,%s,%s,%s,%s,%s\n', ...
                  'subj','mean','std','%fluct','drift','snr','sfnr','rdc');
@@ -80,7 +71,7 @@ function compute_fbirn(basepath, subj, data)
     N = i2 - i1 + 1; % num time frames
     M = r2 - r1 + 1; % num ROI's
     roir = zeros(N, M);
-    fkern = subj;
+    fkern = output_prefix;
     numwin = 3;
 
     %  begin loop through images
@@ -269,8 +260,8 @@ function compute_fbirn(basepath, subj, data)
     text(6, 0.25, sprintf('rdc = %3.1f pixels',rdc));
 
     if(numwin==4)
-        subplot(numwin,1,4);
-        plot(x,roip)
+        subplot(numwin, 1, 4);
+        plot(x, roip)
         xlabel('frame num');
         ylabel('freq drift, Hz');
         grid
@@ -279,11 +270,11 @@ function compute_fbirn(basepath, subj, data)
     % print figures and txt file results
     count=fprintf(fid,'%s,%09.3f,%09.3f,%09.3f,%09.3f,%09.3f,%09.3f,%09.3f\n', subj,meanI,sd,sd*100/m,100*drift,snr,sfnrI,rdc);
 
-    fig1name=strcat(qcpath, subj, '_fmri_qa_images.jpg');
-    fig2name=strcat(qcpath, subj, '_fmri_qa_plots.jpg');
+    fig1name=strcat(output_prefix, '_images.jpg');
+    fig2name=strcat(output_prefix, '_plots.jpg');
 
-    print('-f1','-djpeg',fig1name)
-    print('-f2','-djpeg',fig2name)
+    print('-f1', '-djpeg', fig1name)
+    print('-f2', '-djpeg', fig2name)
     close all
 
 exit
