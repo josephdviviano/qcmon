@@ -1,12 +1,12 @@
-%%  analyze_dti_phantom(dwi, fa, bval, output, nyqopt)
-%%
-%%  'dwi':    4D diffusion weighted image
-%%  'fa':     FA map from DTIfit
-%%  'bval':   B value files from dcm2nii
-%%  'output': folder to store outputs
-%%  'nyqopt':  (1, 0) 1 to measure nyquist ghost (use on not accelerated data).
+%  analyze_dti_phantom(dwi, fa, bval, output, nyqopt)
+%
+%  'dwi':    4D diffusion weighted image
+%  'fa':     FA map from DTIfit
+%  'bval':   B value files from dcm2nii
+%  'output': full path to output prefix
+%  'nyqopt': (1, 0) 1 to measure nyquist ghost (use on not accelerated data).
 
-function analyze_dti_phantom(dwi, fa, bval, output, nyqopt)
+function analyze_dti_phantom(dwi, fa, bval, output_prefix, nyqopt)
 
 %% Part 1: load data
 bval = dlmread(bval);
@@ -17,17 +17,12 @@ fa = load_nifti(fa);
 ndir = length(find(bval>0));
 nb0 = length(find(bval==0));
 
-% create output directory
-if~isdir(output)
-    mkdir(output)
-end
-
 % initalize outputs
-outname = strcat(output, '/main_stats.csv');
-outname01 = strcat(output, '/SNR_each-b0.csv');
-outname03 = strcat(output, '/SNR_each-DWI.csv');
-outname04 = strcat(output, '/Nyq_each-b0.csv');
-outname06 = strcat(output, '/PXShift.csv');
+outname = strcat(output_prefix,   '_stats.csv');
+outname01 = strcat(output_prefix, '_SNR_each-b0.csv');
+outname03 = strcat(output_prefix, '_SNR_each-DWI.csv');
+outname04 = strcat(output_prefix, '_nyq_each-b0.csv');
+outname06 = strcat(output_prefix, '_PXShift.csv');
 
 fid = fopen(outname, 'w');
 fid01 = fopen(outname01, 'w');
@@ -332,18 +327,18 @@ fprintf(fid, '%6.4f,%6.4f,%6.4f,%6.4f,%6.4f,%6.4f,%6.2f,%6.2f,%6.2f,%5.3f,%5.3f,
 fig5name=strcat(output, '/PXShift_ave.jpg'); print('-f5','-djpeg',fig5name);
 
 % SNR
-fig100name = strcat(output, '/b0_diff-roi-noise-hist.jpg');  print('-f100','-djpeg',fig100name);
-fig150name = strcat(output, '/b0_noise-hist.jpg');           print('-f150','-djpeg',fig150name);
-fig200name = strcat(output, '/DWI_diff-roi-noise-hist.jpg'); print('-f200','-djpeg',fig200name);
-fig300name = strcat(output, '/DWI_noise-hist.jpg');          print('-f300','-djpeg',fig300name);
-fig400name = strcat(output, '/SNR_avg-std.jpg');             print('-f400','-djpeg',fig400name);
-fig500name = strcat(output, '/SNR_individual.jpg');          print('-f500','-djpeg',fig500name);
+fig100name = strcat(output_prefix, '_b0_diff-roi-noise-hist.jpg');  print('-f100','-djpeg',fig100name);
+fig150name = strcat(output_prefix, '_b0_noise-hist.jpg');           print('-f150','-djpeg',fig150name);
+fig200name = strcat(output_prefix, '_DWI_diff-roi-noise-hist.jpg'); print('-f200','-djpeg',fig200name);
+fig300name = strcat(output_prefix, '_DWI_noise-hist.jpg');          print('-f300','-djpeg',fig300name);
+fig400name = strcat(output_prefix, '_SNR_avg-std.jpg');             print('-f400','-djpeg',fig400name);
+fig500name = strcat(output_prefix, '_SNR_individual.jpg');          print('-f500','-djpeg',fig500name);
 if nyqopt == 1
-    fig450name = strcat(output, '/SNR_Nyq_eachb0.jpg'); print('-f450','-djpeg',fig450name);
+    fig450name = strcat(output_prefix, '_SNR_Nyq_eachb0.jpg'); print('-f450','-djpeg',fig450name);
 end
 
 % FA
-fig14name=strcat(output, '/FAvalues.jpg'); print('-f14','-djpeg',fig14name);
+fig14name=strcat(output_prefix, '_FAvalues.jpg'); print('-f14','-djpeg',fig14name);
 
 % le fin
 fclose all;
