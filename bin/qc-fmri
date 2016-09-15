@@ -11,6 +11,7 @@ Usage:
         + Mean and SD of normalized spectra across brain
         + Framewise displacement (mm/TR) of head motion [2]
         + Mean global correlation from the in-brain voxels
+        + A collection of metrics from the qascripts package
 
     This pipeline produces multiple outputs:
         <prefix>_sfnr.nii.gz
@@ -18,6 +19,7 @@ Usage:
         <prefix>_spectra.csv
         <prefix>_fd.csv
         <prefix>_stats.csv
+        <prefix>_qascripts_bold.csv
 
 [1] Friedman et al. Reducing interscanner variability of activation in a
     multicenter fMRI study: controlling for signal-to-fluctuation-noise-ratio
@@ -37,6 +39,10 @@ import scipy.signal as sig
 import nibabel as nib
 
 def main(nifti, prefix):
+
+    # add qascript to path
+    qascriptsPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets/qascripts_version2')
+    os.environ['PATH'] += os.pathsep + qascriptsPath
 
     # pre-processing
     tmpdir = tempfile.mkdtemp(prefix='qc-')
@@ -94,6 +100,11 @@ def main(nifti, prefix):
     # write out assorted statistics
     with open(prefix + '_stats.csv', 'wb') as f:
         f.write('#mean_fd,n_bad_fd,%_bad_fd,global_corr,mean_sfnr\n{},{},{},{},{}'.format(fd, numBadFd, pctBadFd, gcorr, sfnr))
+
+    # run metrics from qascripts toolchain
+    qc.utilities.run('cp {nifti} {t}/raw.nii.gz'.format(nifti=nifti, t=tmpdir))
+    qc.utilities.run('qa_bold_v2.sh {t}/raw.nii.gz {t}/qc_bold.csv'.format(t=tmpdir))
+    qc.utilities.run('mv {t}/qc_bold.csv {prefix}_qascripts_bold.csv'.format(t=tmpdir, prefix=prefix))
 
     shutil.rmtree(tmpdir)
 
