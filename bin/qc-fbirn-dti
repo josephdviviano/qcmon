@@ -62,9 +62,7 @@ def main(nifti, bvec, bval, output_prefix, accel='n'):
     matlabPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets/matlab')
     cmd = (r"addpath(genpath('{}')); analyze_dti_phantom('{}','{}','{}','{}','{}')".format(
                                               matlabPath, nifti, fa, bval, output_prefix, accel))
-
-    #qc.utilities.run('matlab -nodisplay -nosplash -r "' + cmd + '"')
-    os.system('matlab -nodisplay -nosplash -r "' + cmd + '"')
+    qc.utilities.run('matlab -nodisplay -nosplash -r "' + cmd + '"')
 
     shutil.rmtree(tmpdir)
 

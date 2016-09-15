@@ -23,8 +23,7 @@ function analyze_fmri_phantom(input, output_prefix)
 
     outflname=strcat(output_prefix, '_stats.csv');
     fid=fopen(outflname,'w');
-    count=fprintf(fid, '%s,%s,%s,%s,%s,%s,%s,%s\n', ...
-                 'subj','mean','std','%fluct','drift','snr','sfnr','rdc');
+    count=fprintf(fid, '%s,%s,%s,%s,%s,%s,%s\n', 'mean','std','%fluct','drift','snr','sfnr','rdc');
 
     more off;
     clear roi;
@@ -268,7 +267,7 @@ function analyze_fmri_phantom(input, output_prefix)
     end
 
     % print figures and txt file results
-    count=fprintf(fid,'%s,%09.3f,%09.3f,%09.3f,%09.3f,%09.3f,%09.3f,%09.3f\n', subj,meanI,sd,sd*100/m,100*drift,snr,sfnrI,rdc);
+    count=fprintf(fid,'%09.3f,%09.3f,%09.3f,%09.3f,%09.3f,%09.3f,%09.3f\n', meanI,sd,sd*100/m,100*drift,snr,sfnrI,rdc);
 
     fig1name=strcat(output_prefix, '_images.jpg');
     fig2name=strcat(output_prefix, '_plots.jpg');

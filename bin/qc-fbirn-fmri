@@ -4,24 +4,39 @@ Usage:
     qc-fbirn-fmri <nifti> <output_prefix>
 
 Arguments:
-    nifti:  4D nifti file of fBIRN phantom
-    output: full path to output prefix
+    nifti:         4D nifti file of fBIRN phantom
+    output_prefix: full path to output prefix
 
 Details:
-    Runs the included 'compute_fbirn.m' script on fbirn phantom data.
+    Runs the included 'analyze_fmri_phantom.m' script on fbirn phantom data.
 
-    Outputs the following files:
+    Outputs:
         <output_prefix>_images.jpg
         <output_prefix>_plots.jpg
         <output_prefix>_stats.csv
 
     Requires MATLAB.
 
-    Adapted by Sofia Chavez, 2014.
+    For the original code, see https://www.nitrc.org/projects/fbirn/
+    For details, see Friedman et al, 2006. Report on a multicenter fMRI quality
+    assurance protocol. Journal of Magnetic Resonance Imaging. 23(6); 827-839.
+
+    Adapted from the fBIRN pipeline by Sofia Chavez, 2014.
     Packaged and maintained by Joseph Viviano, 2016.
 """
 
 import os, sys
+import qcmon as qc
+
+def main(nifti, output_prefix):
+
+    if not os.path.isdir(os.path.dirname(os.path.abspath(output_prefix))):
+        sys.exit('ERROR: Output directory {} does not exist.'.format(os.path.dirname(os.path.abspath(output_prefix))))
+
+    matlabPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets/matlab')
+    cmd = (r"addpath(genpath('{}')); analyze_fmri_phantom('{}','{}')".format(
+                                              matlabPath, nifti, output_prefix))
+    qc.utilities.run('matlab -nodisplay -nosplash -r "' + cmd + '"')
 
 if __name__ == '__main__':
     if len(sys.argv) == 3:
