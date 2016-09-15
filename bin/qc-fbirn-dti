@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 """
 Usage:
-    qc-fbirn-dti <nifti> <bvec> <bval> <output_prefix> <nyq>
+    qc-fbirn-dti <nifti> <bvec> <bval> <output_prefix> <accel>
 
 Arguments:
     nifti:         4D nifti file of fbirn phantom
     bvec:          bvec file from fbirn phantom
     bval:          bval file from fbirn phantom
     output_prefix: full path to output prefix
-    nyq:           y/n, y=nyquist accelerated data [default=n]
+    accel:         y/n, y=nyquist accelerated data [default=n]
 
 Details:
     Compute an FA map of the input file, and then runs the included
@@ -39,7 +39,14 @@ import tempfile
 import shutil
 import qcmon as qc
 
-def main(nifti, bvec, bval, output_prefix, nyq='n'):
+def main(nifti, bvec, bval, output_prefix, accel='n'):
+
+    # check input options
+    if accel not in {'y', 'n'}:
+        sys.exit("ERROR: acceleration option must be 'y' or 'n', submitted '{}'".format(accel))
+
+    if not os.path.isdir(os.path.dirname(os.path.abspath(output_prefix))):
+        sys.exit('ERROR: Output directory {} does not exist.'.format(os.path.dirname(os.path.abspath(output_prefix))))
 
     # preprocessing: make FA map
     tmpdir = tempfile.mkdtemp(prefix='qc-')
@@ -52,20 +59,18 @@ def main(nifti, bvec, bval, output_prefix, nyq='n'):
     if not os.path.isfile(fa):
         sys.exit('ERROR: Failed to calculate FA from {}'.format(nifti))
 
-    if not os.path.isdir(os.path.dirname(output_prefix)):
-        sys.exit('ERROR: Output directory {} does not exist.'.format(os.path.dirname(output_prefix)))
-
-
-    matlabPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'matlab')
+    matlabPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets/matlab')
     cmd = (r"addpath(genpath('{}')); analyze_dti_phantom('{}','{}','{}','{}','{}')".format(
-                                              matlabPath, nifti, fa, bval, output_prefix, nyq))
-    qc.utilities.run('matlab -nodisplay -nosplash -r "' + cmd + '"')
+                                              matlabPath, nifti, fa, bval, output_prefix, accel))
+
+    #qc.utilities.run('matlab -nodisplay -nosplash -r "' + cmd + '"')
+    os.system('matlab -nodisplay -nosplash -r "' + cmd + '"')
 
     shutil.rmtree(tmpdir)
 
 if __name__ == '__main__':
     if len(sys.argv) == 6:
-        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], accel=sys.argv[5])
     elif len(sys.argv) == 5:
         main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
     else:
