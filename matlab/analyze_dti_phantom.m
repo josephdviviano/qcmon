@@ -295,9 +295,9 @@ if nyqopt == 1
             xlabel('b=0 Image#'); axis([1 nb0 0 max(ratNyq(1:nb0))*1.2])
             title(['Ratio of Nyquist ghost: AVE(STD) =',num2str(AVENyqrat,'%03.3f'),'(',num2str(STDNyqrat,'%03.3f'),')'])
 else
-    STDNyqrat = NaN
-    AVENyqrat = NaN
-    CV_Nyqrat = NaN
+    STDNyqrat = NaN;
+    AVENyqrat = NaN;
+    CV_Nyqrat = NaN;
 end
 
 
@@ -324,7 +324,7 @@ fprintf(fid, '%6.4f,%6.4f,%6.4f,%6.4f,%6.4f,%6.4f,%6.2f,%6.2f,%6.2f,%5.3f,%5.3f,
              STDSNRb0,AVESNRb0,CV_SNRb0,STDSNRdwi,AVESNRdwi,CV_SNRdwi,aveaverad,avemaxrad,aveavecol,aveFA,stdFA,STDNyqrat,AVENyqrat,CV_Nyqrat);
 
 %% Part 6: print figures
-fig5name=strcat(output, '/PXShift_ave.jpg'); print('-f5','-djpeg',fig5name);
+fig5name=strcat(output_prefix, '/PXShift_ave.jpg'); print('-f5','-djpeg',fig5name);
 
 % SNR
 fig100name = strcat(output_prefix, '_b0_diff-roi-noise-hist.jpg');  print('-f100','-djpeg',fig100name);
