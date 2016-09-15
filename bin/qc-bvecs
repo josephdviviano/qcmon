@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """
 Computes the number of BVALs and B0s for the input scan, and plots the DTI
-directions  (BVECs) as a 3D scatterplot.
+directions (BVECs) as a 3D scatterplot. This scatterplot will be output in the
+same directory as the output.csv file.
 
 Usage:
     qc-bvecs <bvec> <bval> <output>
@@ -13,7 +14,6 @@ Arguments:
 """
 
 import os,sys
-from copy import copy
 import numpy as np
 
 import matplotlib
@@ -23,7 +23,9 @@ from mpl_toolkits.mplot3d import Axes3D
 
 def main(bvec, bval, output):
 
-    bvecName = copy(bvec)
+    bvecName = os.path.basename(bvec)
+    outputDir = os.path.dirname(os.path.abspath(output))
+
     bvec = np.genfromtxt(bvec)
     bval = np.genfromtxt(bval)
 
@@ -31,12 +33,11 @@ def main(bvec, bval, output):
 
     nDirs = len(idxDirs)
     nB0s = len(bval) - len(idxDirs)
-
     # 3d scatterplot of directions
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(bvec[0, idxDirs], bvec[1, idxDirs], bvec[2, idxDirs])
-    plt.savefig(bvecName + '.png')
+    plt.savefig(os.path.join(outputDir, bvecName + '.png'))
 
     with open(output, 'wb') as f:
         f.write('#ndirs,nb0s\n{},{}'.format(nDirs, nB0s))
