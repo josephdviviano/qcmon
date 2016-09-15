@@ -5,31 +5,47 @@ directions (BVECs) as a 3D scatterplot. This scatterplot will be output in the
 same directory as the output.csv file.
 
 Usage:
-    qc-dti <nifti> <bvec> <bval> <output>
+    qc-dti <nifti> <bvec> <bval> <output_prefix>
 
 Arguments:
     <nifti>           Input DTI nifti scan
     <bvec>            Input bvec file
     <bval>            Input bval file
-    <output>          Output .csv file
+    <output_prefix>   prefix of all output files
+
+    Outputs:
+        <output_prefix>_stats.csv
+        <output_prefix>_directions.png
+        <output_prefix>_qascripts_dti.csv
 """
 
 import os,sys
+import tempfile
+import shutil
+import qcmon as qc
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')   # Force matplotlib to not use any Xwindows backend
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-def main(nifti, bvec, bval, output):
+def main(nifti, bvec, bval, output_prefix):
 
     # add qascript to path
     qascriptsPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets/qascripts_version2')
     os.environ['PATH'] += os.pathsep + qascriptsPath
 
-    bvecName = os.path.basename(bvec)
-    outputDir = os.path.dirname(os.path.abspath(output))
+    # run metrics from qascripts toolchain
+    tmpdir = tempfile.mkdtemp(prefix='qc-')
+    qc.utilities.run('cp {nifti} {t}/dti.nii.gz'.format(nifti=nifti, t=tmpdir))
+    qc.utilities.run('cp {bval} {t}/dti.bval'.format(bval=bval, t=tmpdir))
+    qc.utilities.run('cp {bvec} {t}/dti.bvec'.format(bvec=bvec, t=tmpdir))
+    qc.utilities.run('qa_dti_v2.sh {t}/dti.nii.gz {t}/dti.bval {t}/dti.bvec {t}/qc_dti.csv'.format(t=tmpdir))
+    qc.utilities.run('mv {t}/qc_dti.csv {output_prefix}_qascripts_dti.csv'.format(t=tmpdir, output_prefix=output_prefix))
 
+    shutil.rmtree(tmpdir)
+
+    # load in data for remaining QC
     bvec = np.genfromtxt(bvec)
     bval = np.genfromtxt(bval)
 
@@ -41,24 +57,15 @@ def main(nifti, bvec, bval, output):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(bvec[0, idxDirs], bvec[1, idxDirs], bvec[2, idxDirs])
-    plt.savefig(os.path.join(outputDir, bvecName + '.png'))
+    plt.savefig(os.path.join(output_prefix + '_directions.png'))
 
-    with open(output, 'wb') as f:
+    with open(output_prefix + '_stats.csv', 'wb') as f:
         f.write('#ndirs,nb0s\n{},{}'.format(nDirs, nB0s))
 
-    # run metrics from qascripts toolchain
-    tmpdir = tempfile.mkdtemp(prefix='qc-')
-    qc.utilities.run('cp {nifti} {t}/dti.nii.gz'.format(nifti=nifti, t=tmpdir))
-    qc.utilities.run('cp {bval} {t}/dti.bval'.format(bval=bval, t=tmpdir))
-    qc.utilities.run('cp {bvec} {t}/dti.bvec'.format(bvec=bvec, t=tmpdir))
-    qc.utilities.run('qa_dti_v2.sh {t}/dti.nii.gz {t}/dti.bval {t}/dti.bvec {t}/qc_dti.csv'.format(t=tmpdir))
-    qc.utilities.run('mv {t}/qc_dti.csv {prefix}_qascripts_dti.csv'.format(t=tmpdir, prefix=prefix))
-
-    run('rm -r {}'.format(tmpdir))
 
 if __name__ == '__main__':
-    if len(sys.argv) == 4:
-        main(sys.argv[1], sys.argv[2], sys.argv[3])
+    if len(sys.argv) == 5:
+        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
     else:
         print(__doc__)
 
