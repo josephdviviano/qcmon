@@ -1,29 +1,25 @@
 #!/usr/bin/env python
 """
-Diffs the relevant fields of the header to determine if anything has changed in
-the protocol.
-
 Usage:
-    dm-check-header.py [options] <standards/> <logdir/> <examsdir/>
+    qc-headers <dicom> <standard> <log>
 
 Arguments:
-    <standards/>            Folder with subfolders named by tag. Each subfolder
-                            has a sample gold standard dicom file for that tag.
+    <dicom>         input dicom file to check.
+    <standard>      'gold standard' dicom file to compare with.
+    <output>        output log file.
 
-    <logdir/>               Folder to contain the outputs (specific errors found)
-                            of this script. A log file is created in this
-                            folder for each exam, named: dm-check-headers-<examdir>.log
+Diffs the non-ignored header fields (see DEFAULT_IGNORED_HEADERS) of dicom and
+standard. Any differences found will be detailed in the output file.
 
-    <examsdir/>             Folder with subfolder for each exam to check. Each
-                            exam directory should have one dicom file sample
-                            from each series to check.
+If the output file already exists, it will be appended to instead of overwritten
+so logs can be built on a session-wise, subject-wise, or project-wise basis.
 
-Options:
-    --filter TEXT           A string to filter exams by (ex. site name). All
-                            exam folders found in <examsdir/> must have this
-                            text in their name.
-    --ignore-headers LIST   Comma delimited list of headers to ignore
-    --verbose               Print mismatches to stdout as well as the log file
+NB: Settings are currently managed using the following global variables:
+    DEFAULT_IGNORED_HEADERS
+    INTEGER_TOLERANCES
+    DECIMAL_TOLERANCES
+
+This might (should?) be moved to a dedicated configuration file at some point.
 """
 import sys
 import collections
@@ -33,7 +29,6 @@ import datman as dm
 import glob
 import logging as log
 import numpy as np
-import datman.utils
 import os.path
 
 DEFAULT_IGNORED_HEADERS = set([
@@ -128,10 +123,8 @@ DECIMAL_TOLERANCES = {
     'SpacingBetweenSlices': 4
 }
 
-# represents a mismatch between expected (gold standard) and actual
-# headers for a file
-Mismatch = collections.namedtuple(
-    'Mismatch', ['header', 'expected', 'actual', 'tolerance'])
+# represents a mismatch between expected and actual file headers
+Mismatch = collections.namedtuple('Mismatch', ['header', 'expected', 'actual', 'tolerance'])
 
 # Configuration object for the tolerances used in header compare
 Tolerances = collections.namedtuple('Tolerances', ['integer', 'decimal'])
@@ -140,21 +133,7 @@ DEFAULT_TOLERANCES = Tolerances(
     integer=INTEGER_TOLERANCES,
     decimal=DECIMAL_TOLERANCES)
 
-def get_gold_standard_headers(path):
-    """Fetches the gold standard headers.
-
-    Expects there to be subfolders named by the tag and containing a single
-    dicom file representing the expected (gold standard) headers.
-
-    Returns a map from tag -> headers.
-    """
-    manifest = dm.utils.get_all_headers_in_folder(path, recurse=True)
-    map = {os.path.basename(os.path.dirname(k)): (k, v)
-           for (k, v) in manifest.items()}
-    return map
-
-
-def compare_headers(stdhdr, cmphdr, tolerances=None, ignore_headers=None):
+def compare_headers(stdhdr, cmphdr, tolerances=None, ignore=None):
     """
     Accepts two pydicom objects and prints out header value differences.
 
@@ -165,24 +144,24 @@ def compare_headers(stdhdr, cmphdr, tolerances=None, ignore_headers=None):
     """
 
     tolerances = tolerances or DEFAULT_TOLERANCES
-    ignore_headers = ignore_headers or []
+    ignore = ignore or []
 
     # dir() is expensive so we cache results here
-    stdhdr_names = stdhdr.dir()
-    cmphdr_names = cmphdr.dir()
+    stdhdrNames = stdhdr.dir()
+    cmphdrNames = cmphdr.dir()
 
     # get the unignored headers
-    headers = set(stdhdr_names).union(cmphdr_names).difference(ignore_headers)
+    headers = set(stdhdrNames).union(cmphdrNames).difference(ignore)
 
-    mismatches = []  # list of Mismatches
+    mismatches = []
 
     for header in headers:
-        if header not in stdhdr_names:
+        if header not in stdhdrNames:
             mismatches.append(Mismatch(
                 header=header, expected=None, actual=cmphdr.get(header), tolerance=None))
             continue
 
-        if header not in cmphdr_names:
+        if header not in cmphdrNames:
             mismatches.append(Mismatch(
                 header=header, expected=stdhdr.get(header), actual=None, tolerance=None))
             continue
@@ -193,25 +172,20 @@ def compare_headers(stdhdr, cmphdr, tolerances=None, ignore_headers=None):
         # integer level tolerance
         if header in tolerances.integer:
             n = tolerances.integer[header]
-
-            stdval_rounded = np.round(float(stdval))
-            cmpval_rounded = np.round(float(cmpval))
-            difference = np.abs(stdval_rounded - cmpval_rounded)
-
-            if difference > n:
+            stdApprox = np.round(float(stdval))
+            cmpApprox = np.round(float(cmpval))
+            if np.abs(stdApprox - cmpApprox) > n:
                 mismatches.append(Mismatch(
-                    header=header, expected=stdval_rounded, actual=cmpval_rounded, tolerance=n))
+                    header=header, expected=stdApprox, actual=cmpApprox, tolerance=n))
 
         # decimal level tolerance
         elif header in tolerances.decimal:
             n = tolerances.decimal[header]
-
-            stdval_rounded = round(float(stdval), n)
-            cmpval_rounded = round(float(cmpval), n)
-
-            if stdval_rounded != cmpval_rounded:
+            stdApprox = round(float(stdval), n)
+            cmpApprox = round(float(cmpval), n)
+            if stdApprox != cmpApprox:
                 mismatches.append(Mismatch(
-                    header=header, expected=stdval_rounded, actual=cmpval_rounded, tolerance=n))
+                    header=header, expected=stdApprox, actual=cmpApprox, tolerance=n))
 
         # no tolerance set
         elif str(cmpval) != str(stdval):
@@ -220,92 +194,52 @@ def compare_headers(stdhdr, cmphdr, tolerances=None, ignore_headers=None):
 
     return mismatches
 
-def compare_exam_headers(stdmap, examdir, ignore_headers, tolerances=None):
+def get_header(filename):
     """
-    Compares headers for each series in an exam against gold standards
-
-    <stdmap> is a map from description -> (cmppath, headers) of all of the
-    standard headers to compare against.
-
-    <ignore_headers> is a list of headers to ignore.
+    Ensures the input dicom exists, and then attempts to parse it.
     """
-    exam_headers = dm.utils.get_all_headers_in_folder(examdir)
+    if not os.path.isfile(filename):
+        sys.exit('ERROR: input {} does not exist'.format(filename))
+    try:
+        hdr = dcm.read_file(filename)
+        return hdr
+    except:
+        sys.exit('ERROR: failed to parse {}'.format(filename))
 
-    all_mismatches = {}
-    for cmppath, cmphdr in exam_headers.iteritems():
-        ident, tag, series, description = dm.scanid.parse_filename(cmppath)
+def main(dicom, standard, output):
 
-        if tag not in stdmap:
-            logging.warning(
-                "{}: No matching standard for tag '{}'".format(cmppath, tag))
-            continue
+    outputDir = os.path.dirname(os.path.abspath(output))
+    if not os.path.isdir(outputDir):
+        sys.exit('ERROR: output directory {} does not exist'.format(logsdir))
 
-        stdpath, stdhdr = stdmap[tag]
-        mismatches = compare_headers(
-            stdhdr, cmphdr, tolerances, ignore_headers)
-        if mismatches:
-            all_mismatches[cmppath] = mismatches
+    # removed this command line argument for now
+    #ignore_headers = ignore_headers and ignore_headers.split(",") or []
+    #ignore_headers = DEFAULT_IGNORED_HEADERS.union(ignore_headers)
+    ignore = DEFAULT_IGNORED_HEADERS
+    tolerances = DEFAULT_TOLERANCES
 
-    return all_mismatches
+    dicomHeader = dcm.read_file(dicom)
+    standardHeader = dcm.read_file(standard)
 
-def main():
-    arguments = docopt(__doc__)
-    standardsdir = arguments['<standards/>']
-    logsdir = arguments['<logdir/>']
-    examsdir = arguments['<examsdir/>']
-    verbose = arguments['--verbose']
-    filtertext = arguments['--filter']
-    ignore_headers = arguments['--ignore-headers']
+    mismatches = compare_headers(standardHeader, dicomHeader, tolerances=tolerances, ignore=ignore)
 
-    logging.basicConfig(
-        level=logging.WARN, format="[dm-check-headers] %(levelname)s: %(message)s")
+    if len(mismatches) == 0:
+        sys.exit()
 
-    if verbose:
-        logging.getLogger('').setLevel(log.INFO)
+    print('{} mismatches for {}'.format(len(mismatches), dicom))
+    if os.path.isfile(output):
+        writeMode = 'ab'
+    else:
+        writeMode = 'wb'
 
-    if not os.path.isdir(logsdir):
-        logging.error('Log directory {} does not exist'.format(logsdir))
-        sys.exit(1)
-    if not os.path.isdir(standardsdir):
-        logging.error('Standards directory {} does not exist'.format(standardsdir))
-        sys.exit(1)
-    if not os.path.isdir(examsdir):
-        logging.error('Exams directory {} does not exist'.format(examsdir))
-        sys.exit(1)
-
-    ignore_headers = ignore_headers and ignore_headers.split(",") or []
-    ignore_headers = DEFAULT_IGNORED_HEADERS.union(ignore_headers)
-
-    stdmap = get_gold_standard_headers(standardsdir)
-
-    globexpr = '*'
-    if filtertext:
-        globexpr = '*{}*'.format(filtertext)
-
-    for examdir in glob.glob('{}/{}/'.format(examsdir,globexpr)):
-        if '_PHA_' in examdir:  # ignore phantoms
-            continue
-
-        logfile = os.path.join(logsdir, "dm-check-headers-{}.log".format(
-            os.path.basename(os.path.normpath(examdir))))
-
-        if os.path.isfile(logfile):
-            continue
-
-        all_mismatches = compare_exam_headers(stdmap, examdir, ignore_headers)
-        if not all_mismatches:
-            continue
-
-        if not os.path.exists(logfile):  # display warning on first encounter
-            logging.warn('{} mismatches for exam {}'.format(len(all_mismatches), examdir))
-
-        with open(logfile, "w") as fname:
-            for path, mismatches in all_mismatches.iteritems():
-                for m in mismatches:
-                    message = "{}: header {}, expected = {}, actual = {} [tolerance = {}]".format(
-                        path, m.header, m.expected, m.actual, m.tolerance)
-                    logging.info(message)
-                    fname.write(message + "\n")
+    with open(output, writeMode) as f:
+        for m in mismatches:
+            f.write("{}: header {}, expected = {}, actual = {} [tolerance = {}]\n".format(
+                             dicom, m.header, m.expected, m.actual, m.tolerance))
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 4:
+        main(sys.argv[1], sys.argv[2], sys.argv[3])
+    else:
+        print(__doc__)
+
