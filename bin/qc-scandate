@@ -7,41 +7,60 @@ Arguments:
     <dicom>         input dicom
     <output>        output .csv
 
-Produces a .csv of scan dates and emails them to the specified person.
+Finds the scan date for a submitted DICOM file. Scan date is written as
+YYYY-MM-DD.
+
+If the output file already exists, this program appends to it. This way, it can
+be used to generate a scan date report for many subjects.
 """
 import os, sys
 import csv
 import datetime
 import dicom as dcm
 
-def get_scan_date(subj):
+def get_scan_date(f):
     """
     Looks through the contents of a folder for a single dicom. Returns the
     scan date of the first dicom found as a python datetime object.
     """
     try:
-        d = dcm.read_file(os.path.join(subj, f))
-        date = d.SeriesDate
-        date = datetime.date(int(date[0:4]), int(date[4:6]), int(date[6:8]))
-        return date
+        d = dcm.read_file(f)
     except:
         raise TypeError
+
+    # most sites should have this
+    try:
+        date = d['0009','1027'].value
+        date = datetime.datetime.fromtimestamp(date).strftime("%Y-%m-%d")
+        return date
+    except:
+        pass
+
+    # fallback
+    try:
+        date = d['0008','0021'].value
+        date = datetime.datetime.strptime(date, '%Y%m%d').strftime("%Y-%m-%d")
+        return date
+    except:
+        raise ValueError
 
 def main(dicom, output):
 
     try:
-        date = get_scan_date(os.abspath(dicom))
+        date = get_scan_date(os.path.abspath(dicom))
     except TypeError:
-        sys.exit('ERROR: could not find scandate for {}'.format(os.path.join(datadir, subj)))
+        sys.exit('ERROR: {} is not a valid DICOM file'.format(dicom))
+    except ValueError:
+        sys.exit('ERROR: unable to parse scandate from {}'.format(dicom))
 
-    with open(output , 'wb') as csvfile:
+    if os.path.isfile(output):
+        writeMode = 'ab'
+    else:
+        writeMode = 'wb'
+
+    with open(output , writeMode) as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
-        writer.writerow(['SUBJECT', 'SCANDATE'])
-
-        # remove project name
-        subj = '_'.join(subj.split('_')[1:])
-        date = date.strftime('%Y-%m-%d')
-        writer.writerow([subj, date])
+        writer.writerow([os.path.basename(dicom), date])
 
 if __name__ == '__main__':
     if len(sys.argv) == 3:
