@@ -1,18 +1,41 @@
 #!/usr/bin/env python
+"""
+Usage:
+    qc-scanlength <nifti> <output>
 
-def check_n_trs(fpath):
-    """
-    Returns the number of TRs for an input file. If the file is 3D, we also
-    return 1.
-    """
-    data = nib.load(fpath)
+    <nifti>   full path to nifti file
+    <output>  output.csv
+
+If the output file already exists, this program appends to it. This way, it can
+be used to generate a scan length report for many subjects.
+"""
+import os, sys
+import csv
+import nibabel as nib
+
+def main(nifti, output):
+    try:
+        data = nib.load(nifti)
+    except:
+        sys.exit('ERROR: failed to open nifti file {}'.format(nifti))
 
     try:
-        ntrs = data.shape[3]
+        length = data.shape[3]
     except:
-        ntrs = 1
+        length = 1
 
-    return ntrs
+    if os.path.isfile(output):
+        writeMode = 'ab'
+    else:
+        writeMode = 'wb'
+
+    with open(output , writeMode) as csvfile:
+        writer = csv.writer(csvfile, delimiter=',')
+        writer.writerow([os.path.basename(nifti), length])
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 3:
+        main(sys.argv[1], sys.argv[2])
+    else:
+        print(__doc__)
+
