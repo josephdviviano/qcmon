@@ -2,7 +2,7 @@
 
 """
 Usage:
-    qc-spikecount <nifti> <output> <bvec>
+    qc-spikecount <nifti> <output> <bval>
 
     nifti -- input 4D nifti image (fMRI or DTI)
     output -- output .csv file
@@ -44,7 +44,7 @@ def reorient_4d_image(image):
 
     return image
 
-def main(nifti, output, bvec=None):
+def main(nifti, output, bval=None):
 
     nifti = reorient_4d_image(nib.load(nifti).get_data())
 
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     if len(sys.argv) == 3:
         main(sys.argv[1], sys.argv[2])
     elif len(sys.argv) == 4:
-        main(sys.argv[1], sys.argv[2], sys.argv[3])
+        main(sys.argv[1], sys.argv[2], bval=sys.argv[3])
     else:
         print(__doc__)
 
