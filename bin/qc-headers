@@ -218,9 +218,6 @@ def main(dicom, standard, output):
 
     mismatches = compare_headers(standardHeader, dicomHeader, tolerances=tolerances, ignore=ignore)
 
-    if len(mismatches) == 0:
-        sys.exit()
-
     print('{} mismatches for {}'.format(len(mismatches), dicom))
     if os.path.isfile(output):
         writeMode = 'ab'
@@ -228,6 +225,11 @@ def main(dicom, standard, output):
         writeMode = 'wb'
 
     with open(output, writeMode) as f:
+
+        # write an empty file if we don't have any mismatches
+        if len(mismatches) == 0:
+            sys.exit()
+
         for m in mismatches:
             f.write("{}: header {}, expected = {}, actual = {} [tolerance = {}]\n".format(
                              dicom, m.header, m.expected, m.actual, m.tolerance))
