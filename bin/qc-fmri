@@ -83,7 +83,13 @@ def main(nifti, prefix):
     # calculate L2 norm of each time series
     dims = func.shape
     func = func - np.tile(np.mean(func, axis=1), (dims[1], 1)).T # demean
-    func = func / np.tile(np.linalg.norm(func, ord=2, axis=1), (dims[1], 1)).T # l2 norm
+
+    # calculate l2 norm, replacing zeros with smallest possible float
+    norm = np.linalg.norm(func, ord=2, axis=1)
+    norm[np.where(norm == 0)[0]] = np.finfo(np.float).min
+
+    # corr: devide by norm, take mean, take dot of func & mean
+    func = func / np.tile(norm, (dims[1], 1)).T
     avgUnitTs = np.mean(func, axis=0)
     corr = np.dot(func, avgUnitTs)
     gcorr = np.sum(avgUnitTs**2)
