@@ -54,7 +54,7 @@ def main(nifti, bvec, bval, output_prefix):
     nB0s = len(bval) - len(idxDirs)
 
     # 3d scatterplot of directions
-    fig = plt.figure()
+    fig = plt.figure(figsize=(5, 5))
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(bvec[0, idxDirs], bvec[1, idxDirs], bvec[2, idxDirs])
     plt.savefig(os.path.join(output_prefix + '_directions.png'))
