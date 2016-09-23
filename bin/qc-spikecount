@@ -48,9 +48,9 @@ def main(nifti, output, bval=None):
 
     nifti = reorient_4d_image(nib.load(nifti).get_data())
 
-    if bvec:
-        bvec = np.genfromtxt(bvec)
-        idx = np.where(bvec != 0)[0]
+    if bval:
+        bval = np.genfromtxt(bval)
+        idx = np.where(bval != 0)[0]
         nifti = nifti[:, :, :, idx]
 
     x = nifti.shape[1]

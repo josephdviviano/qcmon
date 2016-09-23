@@ -29,6 +29,8 @@ from copy import copy
 import numpy as np
 import scipy as sp
 import nibabel as nib
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from skimage.measure import label
