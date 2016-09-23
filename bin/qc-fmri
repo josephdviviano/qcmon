@@ -74,9 +74,9 @@ def main(nifti, prefix):
     fd = np.sum(fd, axis=1)
     numBadFd = len(np.where(fd > fdThreshold)[0])
     pctBadFd = numBadFd / float(len(fd))
-    np.savetxt(prefix + '_fd.csv', fd)
 
-    fd = np.mean(fd)
+    # write FD out as a two-column .csv file, including the TR number
+    np.savetxt(prefix + '_fd.csv', np.vstack((np.arange(len(fd)), fd)).T, delimiter=',', header='tr,fd', comments='')
 
     # whole brain correlation (global correlation)
     # https://afni.nimh.nih.gov/pub/dist/doc/program_help/@compute_gcor.html
@@ -105,7 +105,8 @@ def main(nifti, prefix):
 
     # write out assorted statistics
     with open(prefix + '_stats.csv', 'wb') as f:
-        f.write('#mean_fd,n_bad_fd,%_bad_fd,global_corr,mean_sfnr\n{},{},{},{},{}'.format(fd, numBadFd, pctBadFd, gcorr, sfnr))
+        f.write('mean_fd,n_bad_fd,%_bad_fd,global_corr,mean_sfnr\n{},{},{},{},{}'.format(
+                 np.mean(fd), numBadFd, pctBadFd, gcorr, sfnr))
 
     # run metrics from qascripts toolchain
     qc.utilities.run('cp {nifti} {t}/raw.nii.gz'.format(nifti=nifti, t=tmpdir))
