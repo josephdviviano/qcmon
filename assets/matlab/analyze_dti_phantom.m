@@ -7,7 +7,7 @@
 %  'accel': ('y', 'n') 'n' to measure nyquist ghost on non-accelerated data.
 
 function analyze_dti_phantom(dwi, fa, bval, output_prefix, accel)
-
+try
     %% Part 1: load data
     bval = dlmread(bval);
     dwi = load_nifti(dwi);
@@ -341,4 +341,8 @@ function analyze_dti_phantom(dwi, fa, bval, output_prefix, accel)
     % le fin
     fclose all;
     exit;
+
+catch
+    exit(1)
+end
 end
