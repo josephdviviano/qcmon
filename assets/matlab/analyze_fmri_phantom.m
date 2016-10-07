@@ -16,7 +16,7 @@
 %   modified to fit SPINS pipeline by Joseph Viviano, Jan.2015
 
 function analyze_fmri_phantom(input, output_prefix)
-
+try
     % load in the data as I4d LOL (untouched prevents scaling)
     I4d = load_untouch_nii(input);
     I4d = I4d.img;
@@ -275,7 +275,8 @@ function analyze_fmri_phantom(input, output_prefix)
     print('-f1', '-djpeg', fig1name)
     print('-f2', '-djpeg', fig2name)
     close all
-
-exit
+    exit
+catch
+    exit(1)
 end
-
+end
