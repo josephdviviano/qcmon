@@ -339,9 +339,8 @@ try
     fig14name=strcat(output_prefix, '_FAvalues.jpg'); print('-f14','-djpeg',fig14name);
 
     % le fin
-    fclose all;
-    exit;
-
+    fclose all
+    exit
 catch
     exit(1)
 end
