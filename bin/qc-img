@@ -114,8 +114,6 @@ def main(image, name, filename, pic, cmaptype='grey', mode='3d', minval=None, ma
 
         image = np.transpose(image, (2,0,1))
         image = np.rot90(image, 2)
-        steps = np.round(np.linspace(0,np.shape(image)[0]-2, 36)) # coronal plane
-        factor = 6
 
         # use bounding box (submitted or found) to crop extra-brain regions
         if box == None:
@@ -124,6 +122,10 @@ def main(image, name, filename, pic, cmaptype='grey', mode='3d', minval=None, ma
             logger.error('ERROR: Bounding box should have shape = (3,2).')
             raise ValueError
         image = image[box[0,0]:box[0,1], box[1,0]:box[1,1], box[2,0]:box[2,1]]
+
+        # calculate steps after resizing image to fit bounding box
+        steps = np.round(np.linspace(0,np.shape(image)[0]-2, 36)) # coronal plane
+        factor = 6
 
     if mode == '4d':
         image = reorient_4d_image(image)
