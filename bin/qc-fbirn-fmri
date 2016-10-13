@@ -31,7 +31,8 @@ import qcmon as qc
 def main(nifti, output_prefix):
 
     if not os.path.isdir(os.path.dirname(os.path.abspath(output_prefix))):
-        sys.exit('ERROR: Output directory {} does not exist.'.format(os.path.dirname(os.path.abspath(output_prefix))))
+        print('ERROR: Output directory {} does not exist.'.format(os.path.dirname(os.path.abspath(output_prefix))))
+        sys.exit(1)
 
     matlabPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets/matlab')
     cmd = (r"addpath(genpath('{}')); analyze_fmri_phantom('{}','{}')".format(

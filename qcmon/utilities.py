@@ -303,4 +303,4 @@ def run(cmd):
         print("ERROR: {} while executing: {}".format(p.returncode, cmd))
         print("  out: {}".format(out.replace('\n','\n>\t')))
         print("  err: {}".format(err.replace('\n','\n>\t')))
-
+        sys.exit(1)
