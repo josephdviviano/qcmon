@@ -25,6 +25,7 @@ This also calculates the relevant T1 ratios: s2/s1, s3/s1, s4/s1, s5/s1.
 """
 import os, sys
 import tempfile
+import logging
 from copy import copy
 import numpy as np
 import scipy as sp
@@ -32,11 +33,13 @@ import nibabel as nib
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
 from skimage.measure import label
 from skimage.segmentation import random_walker
 from skimage.draw import circle
 from skimage.measure import regionprops
+
+logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(os.path.basename(__file__))
 
 def remove_region(data, i):
     """
@@ -119,13 +122,16 @@ def print_adni_qc(outputdir, data, title):
 
 def main(nifti, output):
 
+    logging.info('Starting')
+
     title = copy(nifti)
     outputdir = os.path.dirname(output)
 
     # load template from assets folder
     template = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets', 'adni-template.nii.gz')
     if not os.path.isfile(template):
-        sys.exit('ERROR: {} not found'.format(template))
+        logger.error('{} not found'.format(template))
+        sys.exit(1)
 
     # convert data to LPI orientation
     tmpdir = tempfile.mkdtemp(prefix='adni-')

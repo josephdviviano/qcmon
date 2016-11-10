@@ -7,6 +7,9 @@ subject numbers/names, checking paths, gathering information, etc.
 import os, sys
 import numpy as np
 import nibabel as nib
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_subj(dir):
     """
@@ -300,7 +303,6 @@ def run(cmd):
     out, err = p.communicate()
 
     if p.returncode != 0:
-        print("ERROR: {} while executing: {}".format(p.returncode, cmd))
-        print("  out: {}".format(out.replace('\n','\n>\t')))
-        print("  err: {}".format(err.replace('\n','\n>\t')))
+        logger.error('{} failed with returncode {}.\nSTDERR: {}'.format(cmd, p.returncode, err))
         sys.exit(1)
+
