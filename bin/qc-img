@@ -181,3 +181,6 @@ def main(image, name, filename, pic, cmaptype='grey', mode='3d', minval=None, ma
     fig.savefig(pic, format='png', dpi=FIGDPI)
     plt.close()
 
+
+if __name__ == '__main__':
+    sys.exit('{} is not functional yet'.format(__name__))

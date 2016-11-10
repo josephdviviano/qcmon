@@ -38,15 +38,23 @@ import os, sys
 import tempfile
 import shutil
 import qcmon as qc
+import logging
+
+logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(os.path.basenam
 
 def main(nifti, bvec, bval, output_prefix, accel='n'):
 
+    logging.info('Starting')
+
     # check input options
     if accel not in {'y', 'n'}:
-        sys.exit("ERROR: acceleration option must be 'y' or 'n', submitted '{}'".format(accel))
+        logger.error("ERROR: acceleration option must be 'y' or 'n', submitted '{}'".format(accel))
+        sys.exit(1)
 
     if not os.path.isdir(os.path.dirname(os.path.abspath(output_prefix))):
-        sys.exit('ERROR: Output directory {} does not exist.'.format(os.path.dirname(os.path.abspath(output_prefix))))
+        logger.error('ERROR: Output directory {} does not exist.'.format(os.path.dirname(os.path.abspath(output_prefix))))
+        sys.exit(1)
 
     # preprocessing: make FA map
     tmpdir = tempfile.mkdtemp(prefix='qc-')
@@ -57,7 +65,8 @@ def main(nifti, bvec, bval, output_prefix, accel='n'):
 
     fa = os.path.join('{}/dtifit_FA.nii.gz'.format(tmpdir))
     if not os.path.isfile(fa):
-        sys.exit('ERROR: Failed to calculate FA from {}'.format(nifti))
+        logger.error('ERROR: Failed to calculate FA from {}'.format(nifti))
+        sys.exit(1)
 
     matlabPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets/matlab')
     cmd = (r"addpath(genpath('{}')); analyze_dti_phantom('{}','{}','{}','{}','{}')".format(

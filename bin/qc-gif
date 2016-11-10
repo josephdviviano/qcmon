@@ -26,6 +26,7 @@ Dependencies:
 """
 
 import sys
+import logging
 import numpy as np
 import nibabel as nib
 import matplotlib
@@ -34,6 +35,9 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy import ndimage as nd
 from epitome.docopt import docopt
+
+logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(os.path.basename(__file__))
 
 def bounding_box(filename):
     """
@@ -99,6 +103,8 @@ def main():
     prefix    = arguments['<prefix>']
     label     = arguments['--label']
     alpha     = arguments['--alpha']
+
+    logging.info('Starting')
 
     # load in the data
     image = nib.load(image).get_data()

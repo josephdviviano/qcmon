@@ -12,8 +12,8 @@ Arguments:
 
 DETAILS:
 
-    For each subject, prints the central slice of the T1 and co-registered + 
-    deskulled EPI, including an edge-detected version of the T1 (requires AFNI).   
+    For each subject, prints the central slice of the T1 and co-registered +
+    deskulled EPI, including an edge-detected version of the T1 (requires AFNI).
 """
 
 import os, sys
@@ -36,7 +36,7 @@ def reorient_to_radiological(image):
     """
     Reorients input 3D numpy matrix to be the proper orientation for plotting.
     """
-    
+
     image = np.transpose(image, (2,0,1))
     image = np.rot90(image, 2)
 
@@ -46,11 +46,11 @@ def process_subject(path, expt, mode, subj, pdf):
     """
     Generates edge image, reorients data, and prints overlays to a PDF page.
     """
-    edge = os.path.join(path, expt, subj, 
+    edge = os.path.join(path, expt, subj,
                                    'T1/SESS01/anat_T1_edge.nii.gz')
-    anat = os.path.join(path, expt, subj, 
+    anat = os.path.join(path, expt, subj,
                                    'T1/SESS01/anat_T1_brain.nii.gz')
-    reg = os.path.join(path, expt, subj, mode, 
+    reg = os.path.join(path, expt, subj, mode,
                                         'SESS01/reg_EPI_to_T1.nii.gz')
 
     # create edge dataset if it doesn't exist
@@ -73,7 +73,7 @@ def process_subject(path, expt, mode, subj, pdf):
 
     # match over + underlay dimensions
     reg_to_anat = nd.interpolation.zoom(reg, zoom=dsfactor)
-    
+
     # set small values in overlay to be transparent
     reg_to_anat = np.ma.masked_where(reg_to_anat < 50, reg_to_anat)
     cmap = plt.cm.Reds
@@ -175,4 +175,4 @@ def main():
     pdf.close()
 
 if __name__ == "__main__":
-    main()
+    sys.exit('{} is not functional yet'.format(__name__))

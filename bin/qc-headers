@@ -23,8 +23,12 @@ This might (should?) be moved to a dedicated configuration file at some point.
 """
 import os, sys
 import collections
+import logging
 import dicom as dcm
 import numpy as np
+
+logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(os.path.basename(__file__))
 
 DEFAULT_IGNORED_HEADERS = set([
     'AccessionNumber',
@@ -203,9 +207,12 @@ def get_header(filename):
 
 def main(dicom, standard, output):
 
+    logging.info('Starting')
+
     outputDir = os.path.dirname(os.path.abspath(output))
     if not os.path.isdir(outputDir):
-        sys.exit('ERROR: output directory {} does not exist'.format(outputDir))
+        logger.error('ERROR: output directory {} does not exist'.format(outputDir))
+        sys.exit(1)
 
     # removed this command line argument for now
     #ignore_headers = ignore_headers and ignore_headers.split(",") or []
@@ -228,7 +235,7 @@ def main(dicom, standard, output):
 
         # write an empty file if we don't have any mismatches
         if len(mismatches) == 0:
-            sys.exit()
+            sys.exit(0)
 
         for m in mismatches:
             f.write("{}: header {}, expected = {}, actual = {} [tolerance = {}]\n".format(

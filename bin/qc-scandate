@@ -16,7 +16,11 @@ be used to generate a scan date report for many subjects.
 import os, sys
 import csv
 import datetime
+import logging
 import dicom as dcm
+
+logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(os.path.basename(__file__))
 
 def get_scan_date(f):
     """
@@ -46,12 +50,16 @@ def get_scan_date(f):
 
 def main(dicom, output):
 
+    logging.info('Starting')
+
     try:
         date = get_scan_date(os.path.abspath(dicom))
     except TypeError:
-        sys.exit('ERROR: {} is not a valid DICOM file'.format(dicom))
+        logger.error('ERROR: {} is not a valid DICOM file'.format(dicom))
+        sys.exit(1)
     except ValueError:
-        sys.exit('ERROR: unable to parse scandate from {}'.format(dicom))
+        logger.error('ERROR: unable to parse scandate from {}'.format(dicom))
+        sys.exit(1)
 
     if os.path.isfile(output):
         writeMode = 'ab'

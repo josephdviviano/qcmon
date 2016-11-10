@@ -32,13 +32,19 @@ Usage:
 import os, sys
 import tempfile
 import shutil
+import logging
 import qcmon as qc
 import numpy as np
 import scipy as sp
 import scipy.signal as sig
 import nibabel as nib
 
+logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(os.path.basename(__file__))
+
 def main(nifti, prefix):
+
+    logging.info('Starting')
 
     # add qascript to path
     qascriptsPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, 'assets/qascripts_version2')
@@ -120,3 +126,4 @@ if __name__ == '__main__':
         main(sys.argv[1], sys.argv[2])
     else:
         print(__doc__)
+

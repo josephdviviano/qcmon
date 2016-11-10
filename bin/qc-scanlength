@@ -11,13 +11,21 @@ be used to generate a scan length report for many subjects.
 """
 import os, sys
 import csv
+import logging
 import nibabel as nib
 
+logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(os.path.basename(__file__))
+
 def main(nifti, output):
+
+    logging.info('Starting')
+
     try:
         data = nib.load(nifti)
     except:
-        sys.exit('ERROR: failed to open nifti file {}'.format(nifti))
+        logger.error('ERROR: failed to open nifti file {}'.format(nifti))
+        sys.exit(1)
 
     try:
         length = data.shape[3]
