@@ -13,14 +13,15 @@ Arguments:
     <bval>            Input bval file
     <output_prefix>   prefix of all output files
 
-    Outputs:
-        <output_prefix>_stats.csv
-        <output_prefix>_directions.png
-        <output_prefix>_qascripts_dti.csv
+Outputs:
+    <output_prefix>_stats.csv
+    <output_prefix>_directions.png
+    <output_prefix>_qascripts_dti.csv
 """
 
 import os,sys
 import tempfile
+import logging
 import shutil
 import qcmon as qc
 import numpy as np
@@ -28,6 +29,15 @@ import matplotlib
 matplotlib.use('Agg')   # Force matplotlib to not use any Xwindows backend
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+
+logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(os.path.basename(__file__))
+
+def absmax(x):
+    """
+    Finds the maximum absoloute value of the input vector x.
+    """
+    return(np.max((np.abs(np.max(x)), np.abs(np.min(x)))))
 
 def main(nifti, bvec, bval, output_prefix):
 
@@ -54,14 +64,20 @@ def main(nifti, bvec, bval, output_prefix):
     nB0s = len(bval) - len(idxDirs)
 
     # 3d scatterplot of directions
+    xlim = absmax(bvec[0, idxDirs])
+    ylim = absmax(bvec[1, idxDirs])
+    zlim = absmax(bvec[2, idxDirs])
+
     fig = plt.figure(figsize=(5, 5))
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(bvec[0, idxDirs], bvec[1, idxDirs], bvec[2, idxDirs])
+    ax.set_xlim3d([-xlim, xlim])
+    ax.set_ylim3d([-ylim, ylim])
+    ax.set_zlim3d([-zlim, zlim])
     plt.savefig(os.path.join(output_prefix + '_directions.png'))
 
     with open(output_prefix + '_stats.csv', 'wb') as f:
         f.write('#ndirs,nb0s\n{},{}'.format(nDirs, nB0s))
-
 
 if __name__ == '__main__':
     if len(sys.argv) == 5:
