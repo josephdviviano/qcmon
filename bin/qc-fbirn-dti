@@ -41,7 +41,7 @@ import qcmon as qc
 import logging
 
 logging.basicConfig(level=logging.WARN, format="[%(name)s] %(levelname)s: %(message)s")
-logger = logging.getLogger(os.path.basenam
+logger = logging.getLogger(os.path.basename(__file__))
 
 def main(nifti, bvec, bval, output_prefix, accel='n'):
 
