@@ -98,7 +98,7 @@ def sample_centroids(data, radius=5):
         data = remove_region(data, roi)
 
         # place circle --  watch these indicies -- keep flipping)
-        rr, cc = circle(y, x, 5, data.shape)
+        rr, cc = circle(int(y), int(x), 5, data.shape)
         data[cc, rr] = roi
 
     return data
@@ -135,8 +135,9 @@ def main(nifti, output):
 
     # convert data to LPI orientation
     tmpdir = tempfile.mkdtemp(prefix='adni-')
+    opts = '-searchrx -180 180 -searchry -180 180 -searchrz -180 180 -coarsesearch 30 -finesearch 9 -cost normcorr'
     os.system('3daxialize -prefix {}/adni-lpi.nii.gz -orient LPI {}'.format(tmpdir, nifti))
-    os.system('flirt -in {tmpdir}/adni-lpi.nii.gz -ref {template} -out {tmpdir}/adni-lpi-reg.nii.gz'.format(tmpdir=tmpdir, template=template))
+    os.system('flirt {opts} -in {tmpdir}/adni-lpi.nii.gz -ref {template} -out {tmpdir}/adni-lpi-reg.nii.gz'.format(opts=opts, tmpdir=tmpdir, template=template))
 
     # load data into ram
     data = nib.load(os.path.join(tmpdir, 'adni-lpi-reg.nii.gz')).get_data() # import
