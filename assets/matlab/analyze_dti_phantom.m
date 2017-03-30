@@ -9,6 +9,7 @@
 function analyze_dti_phantom(dwi, fa, bval, output_prefix, accel)
 try
     %% Part 1: load data
+    disp('loading data');
     bval = dlmread(bval);
     dwi = load_nifti(dwi);
     fa = load_nifti(fa);
@@ -18,6 +19,7 @@ try
     nb0 = length(find(bval==0));
 
     % initalize outputs
+    disp('opening output files');
     outname = strcat(output_prefix,   '_stats.csv');
     outname01 = strcat(output_prefix, '_SNR_each-b0.csv');
     outname03 = strcat(output_prefix, '_SNR_each-DWI.csv');
