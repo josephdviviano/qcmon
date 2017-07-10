@@ -17,6 +17,9 @@ Outputs:
     <output_prefix>_stats.csv
     <output_prefix>_directions.png
     <output_prefix>_qascripts_dti.csv
+
+[1] Roalf et al. The impact of quality assurance assessment on diffusion tensor
+imaging outcomes in a large-scale population-based cohort. Neuroimage. 2016.
 """
 
 import os,sys
