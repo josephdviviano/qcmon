@@ -9,7 +9,7 @@ Usage:
     Calculates and writes:
         + Signal-to-fluctuation noise ratio (SFNR) [1]
         + Mean and SD of normalized spectra across brain
-        + Framewise displacement (mm/TR) of head motion [2]
+        + Framewise displacement (mm/TR) of head motion (FD) [2]
         + Mean global correlation from the in-brain voxels
         + A collection of metrics from the qascripts package
 
@@ -20,6 +20,8 @@ Usage:
         <prefix>_fd.csv
         <prefix>_stats.csv
         <prefix>_qascripts_bold.csv
+
+    NB: FD thresholds set to 0.2 mm with an assumed head radius of 50 mm.
 
 [1] Friedman et al. Reducing interscanner variability of activation in a
     multicenter fMRI study: controlling for signal-to-fluctuation-noise-ratio
